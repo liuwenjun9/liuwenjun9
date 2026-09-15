@@ -4,16 +4,14 @@
 #include <ctype.h>
 
 #define MAX_TEXT_LEN 100000
-#define GRAM_SIZE 3   // 3-gram，连续3字符作为比对单元
+#define GRAM_SIZE 3   
 
-// 文本预处理：过滤标点、空格，只保留有效字符
 void preprocess(char *src, char *dst)
 {
     int i = 0, j = 0;
     while (src[i] != '\0')
     {
         unsigned char ch = (unsigned char)src[i];
-        // 保留中文(UTF-8)、字母、数字；过滤标点空格
         if ((ch >= 0x80) || isalnum(ch))
         {
             dst[j++] = src[i];
@@ -23,7 +21,6 @@ void preprocess(char *src, char *dst)
     dst[j] = '\0';
 }
 
-// 读取文件全部内容到buf
 int read_file(const char *path, char *buf, int maxlen)
 {
     FILE *fp = fopen(path, "r");
@@ -38,7 +35,6 @@ int read_file(const char *path, char *buf, int maxlen)
     return len;
 }
 
-// 统计：textA中多少个gram片段在textB中存在
 int count_common_gram(char *textA, char *textB)
 {
     int cnt = 0;
@@ -48,7 +44,6 @@ int count_common_gram(char *textA, char *textB)
     if (lenA < GRAM_SIZE || lenB < GRAM_SIZE)
         return 0;
 
-    // 遍历A所有gram
     int i;
     for (i = 0; i <= lenA - GRAM_SIZE; i++)
     {
@@ -56,7 +51,6 @@ int count_common_gram(char *textA, char *textB)
         strncpy(gram, textA + i, GRAM_SIZE);
         gram[GRAM_SIZE] = '\0';
 
-        // 在B中查找该gram
         if (strstr(textB, gram) != NULL)
         {
             cnt++;
@@ -78,14 +72,11 @@ int main(int argc, char *argv[])
     char orig_clean[MAX_TEXT_LEN] = {0};
     char copy_clean[MAX_TEXT_LEN] = {0};
 
-    // 读取原文
     if (read_file(argv[1], orig_buf, MAX_TEXT_LEN) < 0)
         return 1;
-    // 读取抄袭文本
     if (read_file(argv[2], copy_buf, MAX_TEXT_LEN) < 0)
         return 1;
 
-    // 文本清洗
     preprocess(orig_buf, orig_clean);
     preprocess(copy_buf, copy_clean);
 
@@ -103,7 +94,6 @@ int main(int argc, char *argv[])
         rate = (double)common / total_gram;
     }
 
-    // 写入结果文件，保留2位小数
     FILE *out_fp = fopen(argv[3], "w");
     if (!out_fp)
     {
