@@ -1,0 +1,118 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_TEXT_LEN 100000
+#define GRAM_SIZE 3   // 3-gram，连续3字符作为比对单元
+
+// 文本预处理：过滤标点、空格，只保留有效字符
+void preprocess(char *src, char *dst)
+{
+    int i = 0, j = 0;
+    while (src[i] != '\0')
+    {
+        unsigned char ch = (unsigned char)src[i];
+        // 保留中文(UTF-8)、字母、数字；过滤标点空格
+        if ((ch >= 0x80) || isalnum(ch))
+        {
+            dst[j++] = src[i];
+        }
+        i++;
+    }
+    dst[j] = '\0';
+}
+
+// 读取文件全部内容到buf
+int read_file(const char *path, char *buf, int maxlen)
+{
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+    {
+        perror("open file failed");
+        return -1;
+    }
+    int len = fread(buf, 1, maxlen - 1, fp);
+    buf[len] = '\0';
+    fclose(fp);
+    return len;
+}
+
+// 统计：textA中多少个gram片段在textB中存在
+int count_common_gram(char *textA, char *textB)
+{
+    int cnt = 0;
+    int lenA = strlen(textA);
+    int lenB = strlen(textB);
+
+    if (lenA < GRAM_SIZE || lenB < GRAM_SIZE)
+        return 0;
+
+    // 遍历A所有gram
+    int i;
+    for (i = 0; i <= lenA - GRAM_SIZE; i++)
+    {
+        char gram[GRAM_SIZE + 1];
+        strncpy(gram, textA + i, GRAM_SIZE);
+        gram[GRAM_SIZE] = '\0';
+
+        // 在B中查找该gram
+        if (strstr(textB, gram) != NULL)
+        {
+            cnt++;
+        }
+    }
+    return cnt;
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc != 4)
+    {
+        printf("Usage: %s orig.txt copy.txt result.txt\n", argv[0]);
+        return 1;
+    }
+
+    char orig_buf[MAX_TEXT_LEN] = {0};
+    char copy_buf[MAX_TEXT_LEN] = {0};
+    char orig_clean[MAX_TEXT_LEN] = {0};
+    char copy_clean[MAX_TEXT_LEN] = {0};
+
+    // 读取原文
+    if (read_file(argv[1], orig_buf, MAX_TEXT_LEN) < 0)
+        return 1;
+    // 读取抄袭文本
+    if (read_file(argv[2], copy_buf, MAX_TEXT_LEN) < 0)
+        return 1;
+
+    // 文本清洗
+    preprocess(orig_buf, orig_clean);
+    preprocess(copy_buf, copy_clean);
+
+    int len_orig = strlen(orig_clean);
+    int total_gram;
+    if (len_orig < GRAM_SIZE)
+        total_gram = 0;
+    else
+        total_gram = len_orig - GRAM_SIZE + 1;
+
+    int common = count_common_gram(orig_clean, copy_clean);
+    double rate = 0.0;
+    if (total_gram > 0)
+    {
+        rate = (double)common / total_gram;
+    }
+
+    // 写入结果文件，保留2位小数
+    FILE *out_fp = fopen(argv[3], "w");
+    if (!out_fp)
+    {
+        perror("open output file failed");
+        return 1;
+    }
+    fprintf(out_fp, "%.2f", rate);
+    fclose(out_fp);
+
+    printf("查重完成！重复率：%.2f\n", rate);
+    return 0;
+}
